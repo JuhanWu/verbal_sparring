@@ -1,0 +1,18 @@
+# === 對戰 server 執行期 (app.py + referee_core.py) ===
+# referee_core 透過 HTTP 打本地 vLLM，不在 process 內載模型，所以只要 requests。
+fastapi==0.136.1
+uvicorn==0.46.0
+websockets==15.0.1
+requests==2.33.1
+
+# === 編譯 Cython .so (setup.py build_ext --inplace) ===
+Cython==3.2.5
+setuptools==80.10.2
+
+# === 視覺探針 / 本地載模型實驗 (vision_probe.py，server 執行期非必需) ===
+# 只有要直接在本機跑 Gemma 多模態時才需要；正式對戰走 vLLM serve 可不裝。
+torch==2.11.0
+transformers==5.8.0
+Pillow==12.2.0
+bitsandbytes==0.49.2
+accelerate==1.13.0
