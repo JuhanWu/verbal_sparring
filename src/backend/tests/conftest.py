@@ -42,6 +42,14 @@ def _resolve_test_url(configured: str) -> str:
         port = int(port_str) if port_str else 5432
         socket.create_connection((host, port), timeout=1).close()
     except Exception:
+        import warnings
+        warnings.warn(
+            "PostgreSQL unavailable — falling back to SQLite. "
+            "Tests involving JSONB (GameRound, NpcMemory) may fail. "
+            "Run: docker compose up -d postgres_test",
+            UserWarning,
+            stacklevel=2,
+        )
         return _SQLITE_FALLBACK
 
     # TCP open — verify credentials with a real async connection.
@@ -49,8 +57,26 @@ def _resolve_test_url(configured: str) -> str:
         loop = asyncio.new_event_loop()
         reachable = loop.run_until_complete(_postgres_reachable(configured))
         loop.close()
-        return configured if reachable else _SQLITE_FALLBACK
+        if reachable:
+            return configured
+        import warnings
+        warnings.warn(
+            "PostgreSQL unavailable — falling back to SQLite. "
+            "Tests involving JSONB (GameRound, NpcMemory) may fail. "
+            "Run: docker compose up -d postgres_test",
+            UserWarning,
+            stacklevel=2,
+        )
+        return _SQLITE_FALLBACK
     except Exception:
+        import warnings
+        warnings.warn(
+            "PostgreSQL unavailable — falling back to SQLite. "
+            "Tests involving JSONB (GameRound, NpcMemory) may fail. "
+            "Run: docker compose up -d postgres_test",
+            UserWarning,
+            stacklevel=2,
+        )
         return _SQLITE_FALLBACK
 
 
@@ -109,7 +135,9 @@ async def client(db: AsyncSession):
     """AsyncClient wired to the FastAPI app with the test DB injected."""
     from src.backend.main import app
 
-    app.dependency_overrides[get_session] = lambda: db
+    async def _override():
+        yield db
+    app.dependency_overrides[get_session] = _override
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:

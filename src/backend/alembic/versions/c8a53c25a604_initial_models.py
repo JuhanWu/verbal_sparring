@@ -83,4 +83,5 @@ def downgrade() -> None:
     op.drop_table('npc_memory')
     op.drop_table('matches')
     op.drop_table('players')
+    op.execute("DROP TYPE IF EXISTS matchstatus")
     # ### end Alembic commands ###
