@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Header, HTTPException
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
 
 from src.backend.core.config import settings
@@ -60,16 +60,21 @@ def decode_token(token: str) -> dict:
         token: The JWT string to decode.
 
     Returns:
-        The decoded payload dict on success, or an empty dict if the token is
-        invalid or expired.
+        The decoded payload dict on success, or a dict with ``_error`` key set
+        to ``"expired"`` if the token has expired, or ``"invalid"`` if the
+        token is otherwise malformed or has an invalid signature.
     """
     try:
         return jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+    except ExpiredSignatureError:
+        return {"_error": "expired"}
     except JWTError:
-        return {}
+        return {"_error": "invalid"}
 
 
-async def get_current_player(authorization: str = Header(...)) -> dict:
+async def get_current_player(
+    authorization: str = Header(..., alias="Authorization"),
+) -> dict:
     """FastAPI dependency that extracts and validates the Bearer token.
 
     Args:
@@ -80,13 +85,15 @@ async def get_current_player(authorization: str = Header(...)) -> dict:
         ``username``.
 
     Raises:
-        HTTPException: 401 if the header is missing the Bearer prefix or the
-            token is invalid/expired.
+        HTTPException: 401 if the header is missing the Bearer prefix, or the
+            token has expired, or the token is otherwise invalid.
     """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
     token = authorization.removeprefix("Bearer ")
     payload = decode_token(token)
-    if not payload:
+    if payload.get("_error") == "expired":
+        raise HTTPException(status_code=401, detail="Token expired")
+    if not payload or payload.get("_error"):
         raise HTTPException(status_code=401, detail="Invalid token")
     return payload  # {"sub": user_id, "username": username}
