@@ -9,6 +9,7 @@ The graph contains three nodes:
 import json
 from typing import TypedDict
 
+import httpx
 from langgraph.graph import END, StateGraph
 
 from src.backend.core.config import settings
@@ -63,8 +64,6 @@ async def _call_ollama(messages: list[dict]) -> str:
     Raises:
         httpx.HTTPStatusError: If the Ollama API returns a non-2xx response.
     """
-    import httpx
-
     payload = {
         "model": settings.ollama_model,
         "messages": messages,
@@ -153,55 +152,35 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
-async def _node_call_ollama(state: RefereeState) -> RefereeState:
-    """LangGraph node: call Ollama and store raw response in state.
-
-    Args:
-        state: Current referee state with original_text and image_b64.
-
-    Returns:
-        Updated state with raw_response populated.
-    """
+async def _node_call_ollama(state: RefereeState) -> dict:
+    """LangGraph node: call Ollama and store raw response in state."""
     msgs = _build_messages(state["original_text"], state.get("image_b64"))
-    state["raw_response"] = await _call_ollama(msgs)
-    return state
+    raw = await _call_ollama(msgs)
+    return {"raw_response": raw}
 
 
-def _node_parse_response(state: RefereeState) -> RefereeState:
-    """LangGraph node: parse the LLM JSON response into structured fields.
-
-    Falls back to safe defaults when parsing fails.
-
-    Args:
-        state: Current referee state with raw_response populated.
-
-    Returns:
-        Updated state with damage, comment, and display_text populated.
-    """
+def _node_parse_response(state: RefereeState) -> dict:
+    """LangGraph node: parse the LLM JSON response into structured fields."""
     parsed = _extract_json(state["raw_response"])
     if parsed is None:
-        state["damage"] = 10
-        state["comment"] = "裁判嘴瓢了"
-        state["display_text"] = state["original_text"] or "（無言以對）"
-    else:
-        state["damage"] = int(parsed.get("damage", 15))
-        state["comment"] = str(parsed.get("referee_comment", "裁判已介入"))
-        state["display_text"] = str(parsed.get("display_text", state["original_text"] or ""))
-    return state
+        return {
+            "damage": 10,
+            "comment": "裁判嘴瓢了",
+            "display_text": state["original_text"] or "（無言以對）",
+        }
+    return {
+        "damage": int(parsed.get("damage", 15)),
+        "comment": str(parsed.get("referee_comment", "裁判已介入")),
+        "display_text": str(parsed.get("display_text", state["original_text"] or "")),
+    }
 
 
-def _node_validate_clamp(state: RefereeState) -> RefereeState:
-    """LangGraph node: enforce damage range and comment length limits.
-
-    Args:
-        state: Current referee state with damage and comment populated.
-
-    Returns:
-        Updated state with damage clamped to [10, 30] and comment to 40 chars.
-    """
-    state["damage"] = max(10, min(30, state["damage"]))
-    state["comment"] = state["comment"][:40]
-    return state
+def _node_validate_clamp(state: RefereeState) -> dict:
+    """LangGraph node: enforce damage range and comment length limits."""
+    return {
+        "damage": max(10, min(30, state["damage"])),
+        "comment": state["comment"][:40],
+    }
 
 
 _graph = StateGraph(RefereeState)

@@ -30,3 +30,4 @@ async def test_referee_handles_parse_failure():
         result = await run_referee("測試", None)
     assert result["damage"] == 10
     assert "裁判嘴瓢" in result["comment"]
+    assert result["display_text"] == "測試"
