@@ -83,6 +83,7 @@ def train_adapter(
         r=16,
         lora_alpha=32,
         target_modules=target_modules,
+        exclude_modules=["vision_tower", "audio_tower"],
         lora_dropout=0.05,
         bias="none",
         task_type="CAUSAL_LM"
@@ -182,29 +183,28 @@ if __name__ == "__main__":
     print("🚀 Starting Multi-Adapter Co-Training Pipeline...")
     model_id = "google/gemma-4-E4B-it"
     
+    # Use regex to strictly target language_model projection layers (excluding incompatible vision/audio towers)
+    target_modules = ".*language_model.*(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)"
+
     # 1. Train Player Adapter
     train_adapter(
         model_id=model_id,
         adapter_name="player_agent",
-        dataset_path="player_train.json",
+        dataset_path="data/player/player_train.json",
         output_dir="./player_lora_output",
-        target_modules=[
-            "q_proj.linear", "k_proj.linear", "v_proj.linear", "o_proj.linear",
-            "gate_proj.linear", "up_proj.linear", "down_proj.linear"
-        ]
+        target_modules=target_modules
     )
     
     # 2. Train Referee Adapter
     train_adapter(
         model_id=model_id,
         adapter_name="referee_agent",
-        dataset_path="referee_train.json",
+        dataset_path="data/referee/referee_train.json",
         output_dir="./referee_lora_output",
-        target_modules=[
-            "q_proj.linear", "k_proj.linear", "v_proj.linear", "o_proj.linear",
-            "gate_proj.linear", "up_proj.linear", "down_proj.linear"
-        ]
+        target_modules=target_modules
     )
+
     
     print("✅ All adapters trained successfully.")
+
 
