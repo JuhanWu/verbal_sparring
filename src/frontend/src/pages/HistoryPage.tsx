@@ -12,8 +12,12 @@ export default function HistoryPage() {
   const PAGE_SIZE = 20
 
   useEffect(() => {
-    const stored: MatchRecord[] = JSON.parse(localStorage.getItem('matchHistory') ?? '[]')
-    setHistory(stored)
+    try {
+      const stored: MatchRecord[] = JSON.parse(localStorage.getItem('matchHistory') ?? '[]')
+      setHistory(stored)
+    } catch {
+      setHistory([])
+    }
   }, [])
 
   const filtered = history.filter(r => filter === 'all' || r.result === filter)
@@ -48,9 +52,9 @@ export default function HistoryPage() {
       {paged.length === 0 ? (
         <div className="text-bark font-mono text-[9px] text-center py-8">無對戰紀錄</div>
       ) : (
-        paged.map((r, i) => (
+        paged.map((r) => (
           <div
-            key={i}
+            key={r.matchId}
             className={`border border-bamboo px-4 py-3 mb-2 ${r.result === 'win' ? 'bg-parchment' : ''}`}
           >
             <div className="flex items-center justify-between mb-1">

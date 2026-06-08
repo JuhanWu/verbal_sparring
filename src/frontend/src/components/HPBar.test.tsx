@@ -12,7 +12,7 @@ test('progressbar aria-valuenow reflects hp', () => {
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30')
 })
 
-test('clamps hp at 0', () => {
+test('aria-valuenow reflects raw hp (visual width is clamped separately)', () => {
   render(<HPBar label="x" hp={-5} />)
   expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '-5')
 })

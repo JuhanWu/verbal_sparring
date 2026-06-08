@@ -28,8 +28,12 @@ export default function ProfilePage() {
   }, [username])
 
   useEffect(() => {
-    const stored: MatchRecord[] = JSON.parse(localStorage.getItem('matchHistory') ?? '[]')
-    setHistory(stored.slice(0, 5))
+    try {
+      const stored: MatchRecord[] = JSON.parse(localStorage.getItem('matchHistory') ?? '[]')
+      setHistory(stored.slice(0, 5))
+    } catch {
+      setHistory([])
+    }
   }, [])
 
   return (
@@ -64,9 +68,9 @@ export default function ProfilePage() {
         {history.length === 0 ? (
           <div className="text-bark font-mono text-[9px] text-center py-4">尚無對戰紀錄</div>
         ) : (
-          history.map((r, i) => (
+          history.map((r) => (
             <div
-              key={i}
+              key={r.matchId}
               className="flex items-center gap-2 px-3 py-2 mb-[3px]"
               style={{ borderLeft: `2px solid ${r.result === 'win' ? '#cc3300' : '#443322'}` }}
             >
